@@ -4,10 +4,12 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { href: "#features", label: "Features" },
-  { href: "#calculators", label: "Calculators" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#faq", label: "FAQ" },
+  { href: "/#features", label: "Features" },
+  { href: "/mortgage-repayments-calculator", label: "Mortgage calculator" },
+  { href: "/compound-interest-calculator", label: "Compound calculator" },
+  { href: "/#calculators", label: "Calculators" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#faq", label: "FAQ" },
 ];
 
 export function SiteHeader() {
@@ -27,25 +29,25 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-7 md:flex" aria-label="Main">
+        <nav className="hidden items-center gap-5 lg:flex" aria-label="Main">
           {navigation.map((item) => (
-            <a
+            <Link
               key={item.href}
               href={item.href}
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {item.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
-        <a
-          href="#calculators"
+        <Link
+          href="/#calculators"
           className={cn(buttonVariants({ size: "sm" }), "h-9 px-3.5")}
         >
           Try the calculators
           <ArrowRight />
-        </a>
+        </Link>
       </div>
     </header>
   );

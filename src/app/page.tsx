@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   ArrowRight,
   Calculator,
@@ -20,6 +21,7 @@ import {
 import { MortgageBalanceChart } from "@/components/calculators/mortgage-balance-chart";
 import { Faq } from "@/components/landing/faq";
 import { HeroPreview } from "@/components/landing/hero-preview";
+import { SiteFooter } from "@/components/landing/site-footer";
 import { SiteHeader } from "@/components/landing/site-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -70,7 +72,7 @@ const mortgagePoints = [
 ];
 
 const compoundHighlights = [
-  "Combine a starting balance with regular monthly contributions",
+  "Combine a starting balance with monthly, quarterly or yearly contributions",
   "Adjust the annual return and time horizon to match your plan",
   "See contributions versus interest, year by year",
 ];
@@ -241,13 +243,13 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
-                  <a
-                    href="#calculators"
+                  <Link
+                    href="/mortgage-repayments-calculator"
                     className="mt-7 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 transition-colors hover:text-emerald-800"
                   >
                     Try the mortgage calculator
                     <ArrowRight className="size-4" />
-                  </a>
+                  </Link>
                 </div>
 
                 <Card className="[--card-spacing:1.5rem] px-6 shadow-xl shadow-zinc-900/5">
@@ -358,9 +360,9 @@ export default function Home() {
                   </h3>
                   <p className="mt-4 text-base leading-7 text-muted-foreground">
                     Compounding rewards time more than almost anything else.
-                    Start with an amount, add a monthly contribution, and see
-                    how interest begins to do more of the heavy lifting as the
-                    years pass.
+                    Start with an amount, add regular contributions, and see how
+                    interest begins to do more of the heavy lifting as the years
+                    pass.
                   </p>
                   <ul className="mt-6 space-y-3">
                     {compoundHighlights.map((point) => (
@@ -370,13 +372,13 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
-                  <a
-                    href="#calculators"
+                  <Link
+                    href="/compound-interest-calculator"
                     className="mt-7 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 transition-colors hover:text-emerald-800"
                   >
                     Try the compound interest calculator
                     <ArrowRight className="size-4" />
-                  </a>
+                  </Link>
                 </div>
 
                 <Card className="[--card-spacing:1.5rem] px-6 shadow-xl shadow-zinc-900/5 lg:order-1">
@@ -601,53 +603,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-border/60 bg-background">
-        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-            <div className="max-w-sm">
-              <div className="flex items-center gap-2.5">
-                <span className="grid size-8 place-items-center rounded-lg bg-zinc-950 text-white">
-                  <Calculator className="size-4" />
-                </span>
-                <span className="text-[15px] font-semibold tracking-tight">
-                  Ratewise
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Clear mortgage repayment and compound interest calculators for
-                people who would rather understand the numbers than guess.
-              </p>
-            </div>
-
-            <nav
-              className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm sm:grid-cols-2"
-              aria-label="Footer"
-            >
-              {[
-                { href: "#features", label: "Features" },
-                { href: "#calculators", label: "Calculators" },
-                { href: "#how-it-works", label: "How it works" },
-                { href: "#faq", label: "FAQ" },
-              ].map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {item.label}
-                </a>
-              ))}
-            </nav>
-          </div>
-
-          <Separator className="my-8" />
-
-          <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <p>© 2026 Ratewise. Built for clearer decisions.</p>
-            <p>Estimates only. Not financial advice.</p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

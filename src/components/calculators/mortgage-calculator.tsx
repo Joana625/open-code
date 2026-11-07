@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { CalendarDays, Percent } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,10 +15,21 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   calculateMortgage,
   defaultMortgageInputs,
   formatCurrency,
+  mortgageAmortisationSchedule,
   mortgageBalanceSeries,
+  repaymentFrequencies,
+  type RepaymentFrequency,
 } from "@/lib/finance";
 import { MortgageBalanceChart } from "./mortgage-balance-chart";
 
@@ -51,25 +68,52 @@ function AmountField({ id, label, value, onChange, hint }: AmountFieldProps) {
   );
 }
 
-export function MortgageCalculator() {
+type MortgageCalculatorProps = {
+  showSchedule?: boolean;
+};
+
+export function MortgageCalculator({
+  showSchedule = false,
+}: MortgageCalculatorProps) {
   const [homePrice, setHomePrice] = useState(defaultMortgageInputs.homePrice);
   const [deposit, setDeposit] = useState(defaultMortgageInputs.deposit);
   const [rate, setRate] = useState(defaultMortgageInputs.annualRate);
   const [years, setYears] = useState(defaultMortgageInputs.years);
+  const [frequency, setFrequency] = useState<RepaymentFrequency>(
+    defaultMortgageInputs.frequency ?? "monthly",
+  );
+  const [extraRepayment, setExtraRepayment] = useState(
+    defaultMortgageInputs.extraRepayment ?? 0,
+  );
 
-  const result = calculateMortgage({
+  const inputs = {
     homePrice,
     deposit,
     annualRate: rate,
     years,
-  });
+    frequency,
+    extraRepayment,
+  };
 
-  const series = mortgageBalanceSeries({
-    homePrice,
-    deposit,
-    annualRate: rate,
-    years,
-  });
+  const result = calculateMortgage(inputs);
+  const baseline = calculateMortgage({ ...inputs, extraRepayment: 0 });
+  const series = mortgageBalanceSeries(inputs);
+  const schedule = showSchedule ? mortgageAmortisationSchedule(inputs) : [];
+
+  const frequencyDetails = repaymentFrequencies[frequency];
+  const periodNoun =
+    frequency === "monthly"
+      ? "month"
+      : frequency === "fortnightly"
+        ? "fortnight"
+        : "week";
+
+  const interestSaved = Math.max(
+    baseline.totalInterest - result.totalInterest,
+    0,
+  );
+  const monthsSaved = Math.max(baseline.payoffMonths - result.payoffMonths, 0);
+  const hasExtra = extraRepayment > 0 && result.loan > 0;
 
   const principalShare =
     result.totalRepayment > 0
@@ -168,27 +212,98 @@ export function MortgageCalculator() {
             </div>
           </div>
 
+          <Separator />
+
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Repayment frequency</Label>
+              <div
+                className="grid grid-cols-3 gap-1.5"
+                role="group"
+                aria-label="Repayment frequency"
+              >
+                {(
+                  Object.keys(repaymentFrequencies) as RepaymentFrequency[]
+                ).map((option) => (
+                  <Button
+                    key={option}
+                    type="button"
+                    size="sm"
+                    variant={frequency === option ? "default" : "outline"}
+                    aria-pressed={frequency === option}
+                    onClick={() => setFrequency(option)}
+                    className="h-9 px-1 text-xs"
+                  >
+                    {repaymentFrequencies[option].label}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The same annual repayment, split into{" "}
+                {frequencyDetails.label.toLowerCase()} payments.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <AmountField
+                id="extra-repayment"
+                label={`Extra repayment / ${periodNoun}`}
+                value={extraRepayment}
+                onChange={setExtraRepayment}
+                hint={
+                  hasExtra
+                    ? `Paying ${formatCurrency(extraRepayment)} extra each ${periodNoun}`
+                    : "Optional: pay more to finish sooner"
+                }
+              />
+              <div className="flex gap-1.5">
+                {[0, 100, 250, 500].map((amount) => (
+                  <Button
+                    key={amount}
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => setExtraRepayment(amount)}
+                  >
+                    {amount === 0 ? "None" : `$${amount}`}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className="rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
-            Your monthly repayment is principal and interest only. It does not
-            include lender fees, taxes or home insurance.
+            Your repayment is principal and interest only. It does not include
+            lender fees, taxes or home insurance.
           </div>
         </div>
 
         <div className="flex flex-col gap-6 border-t bg-muted/30 p-6 sm:p-8 lg:border-t-0 lg:border-l">
           <div>
             <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-              Monthly repayment
+              {frequencyDetails.label} repayment
             </p>
             <p className="mt-1 flex items-baseline gap-2 text-5xl font-semibold tracking-tight tabular-nums">
-              {formatCurrency(result.monthlyPayment)}
+              {formatCurrency(result.payment)}
               <span className="text-base font-normal text-muted-foreground">
-                /mo
+                /{frequencyDetails.shortLabel}
               </span>
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
               {formatCurrency(result.loan)} loan over {years} years at{" "}
               {rate.toFixed(2)}%
             </p>
+            {frequency !== "monthly" ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Equivalent to {formatCurrency(result.monthlyPayment)} per month
+              </p>
+            ) : null}
+            {hasExtra ? (
+              <p className="mt-1 text-xs text-emerald-700">
+                Includes {formatCurrency(extraRepayment)} extra each{" "}
+                {periodNoun}
+              </p>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-5">
@@ -217,6 +332,25 @@ export function MortgageCalculator() {
               </p>
             </div>
           </div>
+
+          {hasExtra ? (
+            <div className="grid grid-cols-2 gap-4 rounded-lg border border-emerald-600/15 bg-emerald-50/70 p-3">
+              <div>
+                <p className="text-xs text-emerald-800/70">Interest saved</p>
+                <p className="mt-0.5 text-sm font-medium text-emerald-800 tabular-nums">
+                  {formatCurrency(interestSaved)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-emerald-800/70">Time saved</p>
+                <p className="mt-0.5 text-sm font-medium text-emerald-800 tabular-nums">
+                  {monthsSaved > 0
+                    ? `${Math.floor(monthsSaved / 12)}y ${monthsSaved % 12}m`
+                    : "Paid off in the final year"}
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <div className="flex h-2.5 overflow-hidden rounded-full bg-zinc-200">
@@ -252,6 +386,58 @@ export function MortgageCalculator() {
           </div>
         </div>
       </div>
+
+      {showSchedule ? (
+        <div className="border-t p-6 sm:p-8">
+          <Accordion defaultValue={["schedule"]}>
+            <AccordionItem value="schedule" className="border-b-0">
+              <AccordionTrigger className="py-0 text-base">
+                Year-by-year amortisation schedule
+              </AccordionTrigger>
+              <AccordionContent className="pt-4 pb-0">
+                <div className="max-h-[420px] overflow-auto rounded-lg border">
+                  <Table>
+                    <TableHeader className="bg-muted/80">
+                      <TableRow>
+                        <TableHead>Year</TableHead>
+                        <TableHead className="text-right">Principal</TableHead>
+                        <TableHead className="text-right">Interest</TableHead>
+                        <TableHead className="text-right">Total paid</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {schedule.map((row) => (
+                        <TableRow key={row.year}>
+                          <TableCell className="font-medium tabular-nums">
+                            {row.year}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatCurrency(row.principal)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatCurrency(row.interest)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatCurrency(row.total)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatCurrency(row.balance)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Rows show each year of the loan. If you make extra repayments,
+                  the final row may cover less than a full year.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      ) : null}
     </Card>
   );
 }

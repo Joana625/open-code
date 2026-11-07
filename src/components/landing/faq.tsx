@@ -18,7 +18,7 @@ const faqs = [
     value: "compound",
     question: "What does the compound interest calculator show?",
     answer:
-      "It projects what your starting balance and regular monthly contributions could be worth over time. Interest is compounded monthly, and the chart splits your final balance into the money you contributed and the interest earned on top.",
+      "It projects what your starting balance and regular contributions could be worth over time. Interest is compounded monthly, and the chart splits your final balance into the money you contributed and the interest earned on top.",
   },
   {
     value: "fees",

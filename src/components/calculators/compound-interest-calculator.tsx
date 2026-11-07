@@ -2,16 +2,34 @@
 
 import { useState } from "react";
 import { CalendarDays, Percent, TrendingUp } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   calculateCompound,
+  compoundSchedule,
   compoundSeries,
+  contributionFrequencies,
   defaultCompoundInputs,
   formatCurrency,
+  type ContributionFrequency,
 } from "@/lib/finance";
 import { GrowthChart, GrowthLegend } from "./growth-chart";
 
@@ -50,25 +68,51 @@ function AmountField({ id, label, value, onChange, hint }: AmountFieldProps) {
   );
 }
 
-export function CompoundInterestCalculator() {
+type CompoundInterestCalculatorProps = {
+  showSchedule?: boolean;
+};
+
+export function CompoundInterestCalculator({
+  showSchedule = false,
+}: CompoundInterestCalculatorProps) {
   const [initial, setInitial] = useState(defaultCompoundInputs.initial);
-  const [monthly, setMonthly] = useState(defaultCompoundInputs.monthly);
+  const [contribution, setContribution] = useState(
+    defaultCompoundInputs.contribution,
+  );
   const [rate, setRate] = useState(defaultCompoundInputs.annualRate);
   const [years, setYears] = useState(defaultCompoundInputs.years);
+  const [contributionFrequency, setContributionFrequency] =
+    useState<ContributionFrequency>(
+      defaultCompoundInputs.contributionFrequency ?? "monthly",
+    );
 
-  const result = calculateCompound({
+  const inputs = {
     initial,
-    monthly,
+    contribution,
     annualRate: rate,
     years,
-  });
+    contributionFrequency,
+  };
 
-  const points = compoundSeries({ initial, monthly, annualRate: rate, years });
+  const result = calculateCompound(inputs);
+  const points = compoundSeries(inputs);
+  const schedule = showSchedule ? compoundSchedule(inputs) : [];
+
+  const frequencyDetails = contributionFrequencies[contributionFrequency];
+  const periodNoun =
+    contributionFrequency === "monthly"
+      ? "month"
+      : contributionFrequency === "quarterly"
+        ? "quarter"
+        : "year";
+
   const contributionShare =
     result.futureValue > 0
       ? (result.contributed / result.futureValue) * 100
       : 100;
   const interestShare = 100 - contributionShare;
+  const growthMultiple =
+    result.contributed > 0 ? result.futureValue / result.contributed : 0;
 
   return (
     <Card className="gap-0 overflow-hidden [--card-spacing:0px]">
@@ -82,12 +126,42 @@ export function CompoundInterestCalculator() {
               onChange={setInitial}
             />
             <AmountField
-              id="monthly-contribution"
-              label="Monthly contribution"
-              value={monthly}
-              onChange={setMonthly}
-              hint={`${formatCurrency(monthly * 12)} per year`}
+              id="contribution"
+              label={`${frequencyDetails.label} contribution`}
+              value={contribution}
+              onChange={setContribution}
+              hint={`${formatCurrency(contribution * frequencyDetails.perYear)} per year`}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Contribution frequency</Label>
+            <div
+              className="grid grid-cols-3 gap-1.5"
+              role="group"
+              aria-label="Contribution frequency"
+            >
+              {(
+                Object.keys(contributionFrequencies) as ContributionFrequency[]
+              ).map((option) => (
+                <Button
+                  key={option}
+                  type="button"
+                  size="sm"
+                  variant={
+                    contributionFrequency === option ? "default" : "outline"
+                  }
+                  aria-pressed={contributionFrequency === option}
+                  onClick={() => setContributionFrequency(option)}
+                  className="h-9 px-1 text-xs"
+                >
+                  {contributionFrequencies[option].label}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Contributions are added at the end of each {periodNoun}.
+            </p>
           </div>
 
           <Separator />
@@ -145,8 +219,8 @@ export function CompoundInterestCalculator() {
           </div>
 
           <div className="rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
-            Interest is compounded monthly and contributions are added at the
-            end of each month. Returns are illustrative, not guaranteed.
+            Interest is compounded monthly. Contributions are added at the end
+            of each {periodNoun}. Returns are illustrative, not guaranteed.
           </div>
         </div>
 
@@ -162,9 +236,18 @@ export function CompoundInterestCalculator() {
             <p className="mt-2 text-sm text-muted-foreground">
               In {years} years, at {rate.toFixed(1)}% per year
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Contributing {formatCurrency(contribution)} each {periodNoun}
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+            <div>
+              <p className="text-xs text-muted-foreground">Starting amount</p>
+              <p className="mt-0.5 text-lg font-medium tabular-nums">
+                {formatCurrency(Math.max(initial, 0))}
+              </p>
+            </div>
             <div>
               <p className="text-xs text-muted-foreground">Total contributed</p>
               <p className="mt-0.5 text-lg font-medium tabular-nums">
@@ -175,6 +258,12 @@ export function CompoundInterestCalculator() {
               <p className="text-xs text-muted-foreground">Interest earned</p>
               <p className="mt-0.5 text-lg font-medium text-emerald-700 tabular-nums">
                 {formatCurrency(result.interest)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Growth multiple</p>
+              <p className="mt-0.5 text-lg font-medium tabular-nums">
+                {growthMultiple.toFixed(1)}×
               </p>
             </div>
           </div>
@@ -203,16 +292,74 @@ export function CompoundInterestCalculator() {
           </div>
 
           <div className="mt-auto space-y-2">
-            <GrowthChart points={points} className="h-28" />
-            <div className="flex items-center justify-between">
-              <GrowthLegend />
-              <span className="text-xs text-muted-foreground tabular-nums">
-                Year {years}
-              </span>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Balance growth over time</span>
+              <span className="tabular-nums">Year {years}</span>
             </div>
+            <GrowthChart points={points} className="h-28" />
+            <GrowthLegend />
           </div>
         </div>
       </div>
+
+      {showSchedule ? (
+        <div className="border-t p-6 sm:p-8">
+          <Accordion defaultValue={["schedule"]}>
+            <AccordionItem value="schedule" className="border-b-0">
+              <AccordionTrigger className="py-0 text-base">
+                Year-by-year growth schedule
+              </AccordionTrigger>
+              <AccordionContent className="pt-4 pb-0">
+                <div className="max-h-[420px] overflow-auto rounded-lg border">
+                  <Table>
+                    <TableHeader className="bg-muted/80">
+                      <TableRow>
+                        <TableHead>Year</TableHead>
+                        <TableHead className="text-right">
+                          Starting balance
+                        </TableHead>
+                        <TableHead className="text-right">
+                          Contributions
+                        </TableHead>
+                        <TableHead className="text-right">Interest</TableHead>
+                        <TableHead className="text-right">
+                          Ending balance
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {schedule.map((row) => (
+                        <TableRow key={row.year}>
+                          <TableCell className="font-medium tabular-nums">
+                            {row.year}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatCurrency(row.startingBalance)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatCurrency(row.contributions)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatCurrency(row.interest)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatCurrency(row.endingBalance)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Rows show each year of growth. Contributions include the
+                  amounts added during that year, and interest is the growth
+                  earned on the balance.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      ) : null}
     </Card>
   );
 }
